@@ -1,0 +1,429 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <script src="components/loader.js"></script>
+  <link rel="stylesheet" href="components/loader.css">
+  <link rel="stylesheet" href="css/style.css">
+  
+  <style>
+    /* 全体背景と余白調整 */
+    ons-page {
+      background-color: #f4f6f8;
+    }
+    
+    .container {
+      padding: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* 入力フォームの見た目調整 */
+    .form-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .form-row > div {
+      flex: 1;
+    }
+
+    .custom-select, .custom-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+      background-color: #fff;
+    }
+
+    /* ボタンのカスタマイズ */
+    .add-btn {
+      background-color: #2ecc71;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    /* バッジデザイン */
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: 12px;
+      color: #fff;
+      font-weight: bold;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .badge-category { background-color: #34495e; }
+    .badge-subject { background-color: #8e44ad; }
+
+    /* 重要度の色分け */
+    .priority-high { color: #e74c3c; font-weight: bold; }
+    .priority-medium { color: #f39c12; font-weight: bold; }
+    .priority-low { color: #27ae60; font-weight: bold; }
+
+    /* タスクカードデザイン */
+    .task-card {
+      background: #fff;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: opacity 0.2s;
+    }
+
+    .task-card.done {
+      opacity: 0.55;
+      background-color: #ebebeb;
+    }
+
+    .task-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+
+    .task-sub {
+      font-size: 12px;
+      color: #7f8c8d;
+    }
+
+    .task-memo {
+      font-size: 12px;
+      color: #555;
+      background: #f8f9fa;
+      padding: 6px;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+
+    .done-btn {
+      border: 1px solid #2ecc71;
+      color: #2ecc71;
+      background: transparent;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+  </style>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwL8kNWxGKhlTkbOkivuSpYR4cCVcgn3VekcnkwN7EbhCdI0-9U5ovVMkjqu6I8S7of/exec"; // ★ご自身のGAS URL（/exec）を指定
+
+    let allReminders = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      fetchReminders();
+    });
+
+    // データ一覧取得 (GET)
+    function fetchReminders() {
+      fetch(API_URL, {
+        method: "GET",
+        redirect: "follow"
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        if (Array.isArray(data)) {
+          allReminders = data;
+        } else {
+          allReminders = [];
+        }
+        renderList();
+      })
+      .catch(function(err) {
+        console.error("Fetchエラー:", err);
+        alert("データ取得エラー: " + err.message);
+      });
+    }
+
+    // タスク表示処理
+    function renderList() {
+      const listEl = document.getElementById("reminderList");
+      const filterSelect = document.getElementById("statusFilter");
+      const filter = filterSelect ? filterSelect.value : "incomplete";
+
+      if (!listEl) return;
+      listEl.innerHTML = "";
+
+      const filtered = allReminders.filter(function(item) {
+        const status = item.status || item.ステータス || "";
+        if (filter === "incomplete") return status !== "完了";
+        if (filter === "completed") return status === "完了";
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">タスクはありません</div>';
+        return;
+      }
+
+      filtered.forEach(function(item) {
+        // IDが空の場合の安全対策
+        const id = String(item.id || item.ID || "").trim();
+        const title = item.title || item.タイトル || "無題";
+        const category = item.category || item.分類 || "その他";
+        const subject = item.subject || item.教科 || "なし";
+        const dueDate = item.dueDate || item.期限 || "なし";
+        const status = item.status || item.ステータス || "未完了";
+        const priority = item.priority || item.重要度 || "中";
+        const memo = item.memo || item.メモ || "";
+
+        const isDone = status === "完了";
+
+        let priorityClass = "priority-medium";
+        if (priority === "高") priorityClass = "priority-high";
+        if (priority === "低") priorityClass = "priority-low";
+
+        // onclick="markAsDone('${id}')" で ID 文字列を確実にシングルクォーテーションで囲む
+        const html = `
+          <div class="task-card ${isDone ? 'done' : ''}">
+            <div style="flex: 1; padding-right: 8px;">
+              <div class="task-title">
+                ${isDone ? `<s>${escapeHtml(title)}</s>` : escapeHtml(title)}
+                <span class="badge badge-category">${escapeHtml(category)}</span>
+                ${subject && subject !== "なし" ? `<span class="badge badge-subject">${escapeHtml(subject)}</span>` : ''}
+              </div>
+              <div class="task-sub">
+                 期限: ${escapeHtml(dueDate)} | 重要度: <span class="${priorityClass}">${escapeHtml(priority)}</span>
+              </div>
+              ${memo ? `<div class="task-memo"> ${escapeHtml(memo)}</div>` : ''}
+            </div>
+            <div>
+              ${isDone ? '<span style="color:#27ae60; font-weight:bold; font-size:13px;">✓ 期限過</span>' : ''}
+            </div>
+          </div>
+        `;
+        listEl.innerHTML += html;
+      });
+    }
+
+    // ステータス更新 (POST)
+    function markAsDone(id) {
+      if (!id) return;
+      const payload = { action: "updateStatus", id: id, status: "完了" };
+
+      if (window.ons) ons.notification.activityPrompt("更新中...");
+
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      })
+      .then(function() {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        // 待ち時間を 2000ms (2秒) に延長
+        setTimeout(fetchReminders, 2000);
+      })
+      .catch(function(err) {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        alert("更新エラー: " + err.message);
+      });
+    }
+
+    // 教科で「その他」が選ばれたときの表示切り替え
+    function handleSubjectChange() {
+      const subjectSelect = document.getElementById("subjectInput");
+      const otherInput = document.getElementById("subjectOtherInput");
+      
+      if (subjectSelect.value === "その他") {
+        otherInput.style.display = "block";
+        otherInput.focus();
+      } else {
+        otherInput.style.display = "none";
+        otherInput.value = ""; // 非表示にしたら中身をクリア
+      }
+    }
+
+    // タスク追加 (POST)
+    function addReminder() {
+      const title = document.getElementById("titleInput").value.trim();
+      const category = document.getElementById("categoryInput").value;
+      
+      let subject = document.getElementById("subjectInput").value;
+      if (subject === "その他") {
+        const otherVal = document.getElementById("subjectOtherInput").value.trim();
+        subject = otherVal ? otherVal : "その他";
+      }
+
+      // 取得した日付（例: 2026-10-11）をスラッシュ区切り（2026/10/11）に変換
+      let rawDate = document.getElementById("dueDateInput").value;
+      let dueDate = rawDate ? rawDate.replace(/-/g, "/") : "";
+
+      const priority = document.getElementById("priorityInput").value;
+      const memo = document.getElementById("memoInput").value.trim();
+
+      if (!title) {
+        alert("タイトルを入力してください");
+        return;
+      }
+
+      const payload = {
+        action: "add",
+        title: title,
+        category: category,
+        subject: subject,
+        dueDate: dueDate, // 変換後のスラッシュ区切りデータを送信
+        priority: priority,
+        memo: memo,
+        status: "未完了"
+      };
+
+      if (window.ons) ons.notification.activityPrompt("登録中...");
+
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      })
+      .then(function() {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        
+        // 入力フォームクリア
+        document.getElementById("titleInput").value = "";
+        document.getElementById("subjectInput").value = "なし";
+        document.getElementById("subjectOtherInput").style.display = "none";
+        document.getElementById("subjectOtherInput").value = "";
+        document.getElementById("dueDateInput").value = "";
+        document.getElementById("memoInput").value = "";
+        
+        setTimeout(fetchReminders, 2000);
+      })
+      .catch(function(err) {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        alert("登録エラー: " + err.message);
+      });
+    }
+
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</head>
+<body>
+  <ons-page>
+    <ons-toolbar>
+      <div class="center">RemindLog</div>
+      <div class="right">
+        <ons-toolbar-button onclick="fetchReminders()">🔄</ons-toolbar-button>
+      </div>
+    </ons-toolbar>
+
+    <div class="container">
+      <!-- 入力フォームエリア -->
+      <div class="form-card">
+        <div style="font-size: 15px; font-weight: bold; margin-bottom: 12px; color: #333;">新規タスク追加</div>
+        
+        <div class="form-group">
+          <label>タイトル</label>
+          <input type="text" id="titleInput" class="custom-input" placeholder="例: ワーク P.20〜25">
+        </div>
+
+    <div class="form-group form-row">
+          <div>
+            <label>分類</label>
+            <select id="categoryInput" class="custom-select">
+              <option value="宿題">宿題</option>
+              <option value="小テスト">小テスト</option>
+              <option value="定期テスト">定期テスト</option>
+              <option value="提出物">提出物</option>
+              <option value="講習">講習</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+          <div>
+            <label>教科</label>
+            <select id="subjectInput" class="custom-select" onchange="handleSubjectChange()">
+              <option value="なし">なし</option>
+              <option value="現代文">現代文</option>
+              <option value="古典">古典</option>
+              <option value="数学Ⅱ">数学Ⅱ</option>
+              <option value="数学B">数学B</option>
+              <option value="物理">物理</option>
+              <option value="化学">化学</option>
+              <option value="論理表現">論理表現</option>
+              <option value="英語コミュニケーション">英語コミュニケーション</option>
+              <option value="地理">地理</option>
+              <option value="公共">公共</option>
+              <option value="保健体育">保健体育</option>
+              <option value="その他">その他 (自由入力)</option>
+            </select>
+            <!-- 「その他」を選んだときだけ表示するテキスト入力欄 -->
+            <input type="text" id="subjectOtherInput" class="custom-input" placeholder="教科名を入力" style="display: none; margin-top: 6px;">
+          </div>
+        </div>
+
+        <div class="form-group form-row">
+          <div>
+            <label>重要度</label>
+            <select id="priorityInput" class="custom-select">
+              <option value="中">中</option>
+              <option value="高">高</option>
+              <option value="低">低</option>
+            </select>
+          </div>
+          <div>
+            <label>提出期限</label>
+            <input type="date" id="dueDateInput" class="custom-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>メモ（任意）</label>
+          <input type="text" id="memoInput" class="custom-input" placeholder="詳細や注意事項">
+        </div>
+
+        <ons-button class="add-btn" modifier="large" onclick="addReminder()">追加する</ons-button>
+      </div>
+
+      <!-- 一覧ヘッダー＆フィルター -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
+        <span style="font-weight: bold; color: #444; font-size: 15px;">タスク一覧</span>
+        <select id="statusFilter" onchange="renderList()" class="custom-select" style="width: auto; padding: 6px 10px;">
+          <option value="incomplete">未完了</option>
+          <option value="completed">完了済み</option>
+          <option value="all">すべて</option>
+        </select>
+      </div>
+
+      <!-- タスク一覧を表示するエリア -->
+      <div id="reminderList"></div>
+    </div>
+  </ons-page>
+</body>
+</html>
