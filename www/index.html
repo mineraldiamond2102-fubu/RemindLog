@@ -367,6 +367,36 @@
       });
     }
 
+    // 通知テストを実行する関数
+    function sendLineNotification() {
+      if (!userLineId) {
+        alert("LINEアカウント情報がまだ取得できていません。");
+        return;
+      }
+
+      const payload = {
+        action: "notify",
+        userId: userLineId,
+        message: "テスト通知です！"
+      };
+
+      if (window.ons) ons.notification.activityPrompt("通知送信中...");
+
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      })
+      .then(function() {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        alert("テスト通知を送信しました！");
+      })
+      .catch(function(err) {
+        if (window.ons) ons.notification.hideCurrentAlert();
+        alert("通知エラー: " + err.message);
+      });
+    }
 
     function escapeHtml(str) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
