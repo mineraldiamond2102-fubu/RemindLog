@@ -136,14 +136,44 @@
     }
   </style>
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwL8kNWxGKhlTkbOkivuSpYR4cCVcgn3VekcnkwN7EbhCdI0-9U5ovVMkjqu6I8S7of/exec"; // ★ご自身のGAS URL（/exec）を指定
-
-    let allReminders = [];
+ <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwL8kNWxGKhlTkbOkivuSpYR4cCVcgn3VekcnkwN7EbhCdI0-9U5ovVMkjqu6I8S7of/exec";
+    
+    // ユーザーIDを保持する変数を用意しておく
+    let userLineId = "";
 
     document.addEventListener("DOMContentLoaded", function() {
-      fetchReminders();
+        // LIFFの初期化を呼び出す
+        initLiff();
     });
+
+    function initLiff() {
+        liff.init({ liffId: "2012181237-CxYk7ueK" }) 
+            .then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    // プロフィール（名前とID）を取得する
+                    liff.getProfile().then(profile => {
+                        userLineId = profile.userId; // IDを保存！
+                        const displayName = profile.displayName;
+                        
+                        // 画面に名前を表示する
+                        const nameElem = document.getElementById("userName");
+                        if (nameElem) {
+                            nameElem.innerText = displayName + "さん、こんにちは！";
+                        }
+                    }).catch((err) => {
+                        console.error("プロフィールの取得に失敗しました", err);
+                    });
+                }
+            })
+            .catch((err) => {
+                console.error("LIFFの初期化に失敗しました", err);
+            });
+    }
+
 
     // データ一覧取得 (GET)
     function fetchReminders() {
@@ -270,6 +300,12 @@
 
     // タスク追加 (POST)
     function addReminder() {
+      // ★送信時にLINEのユーザーIDが取得できているかチェックする
+      if (!userLineId) {
+        alert("LINEアカウント情報を取得中です。数秒待ってからもう一度お試しください。");
+        return;
+      }
+
       const title = document.getElementById("titleInput").value.trim();
       const category = document.getElementById("categoryInput").value;
       
@@ -293,10 +329,11 @@
 
       const payload = {
         action: "add",
+        userId: userLineId, // ★ここに取得したLINE IDをセットして送信します！
         title: title,
         category: category,
         subject: subject,
-        dueDate: dueDate, // 変換後のスラッシュ区切りデータを送信
+        dueDate: dueDate,
         priority: priority,
         memo: memo,
         status: "未完了"
@@ -321,6 +358,7 @@
         document.getElementById("dueDateInput").value = "";
         document.getElementById("memoInput").value = "";
         
+        alert("タスクを登録しました！");
         setTimeout(fetchReminders, 2000);
       })
       .catch(function(err) {
@@ -333,6 +371,84 @@
     function escapeHtml(str) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+  function sendLineNotificationFromApp() {
+  var gasWebappUrl = 'https://script.google.com/macros/s/AKfycbw2ywOkdMrAehpkoXzmwOTDIPqQAEdDfadi2WNRJctIQlah9gRLsh3vg57uniFONPBU/exec';
+  
+  // 送信したいデータ
+  var targetUserId = 'U321d69044a04ea31236fca6dbf082217'; 
+  var messageText = '【Monacaアプリ】ボタンから送信されたテスト通知です！';
+
+  // URLのクエリパラメータとして組み立てる（encodeURIComponentで文字化け防止）
+  var requestUrl = gasWebappUrl + '?userId=' + encodeURIComponent(targetUserId) + '&message=' + encodeURIComponent(messageText);
+
+  console.log('GASへGETリクエストを送信します...');
+
+  // GETリクエストならCORSに引っかかりません
+  fetch(requestUrl)
+    .then(response => response.json())
+    .then(data => {
+      console.log('成功:', data);
+      alert('LINEへの通知リクエストを送信しました！');
+    })
+    .catch((error) => {
+      console.error('通信エラー:', error);
+      alert('通知の送信に失敗しました。');
+    });
+}
+
+function registerTaskFromApp() {
+    // あなたのGASウェブアプリのURLに書き換えてください
+    var gasWebappUrl = 'https://script.google.com/macros/s/AKfycbz-VA3BfMuk2M1jfWHaJU9uXAA_GiR7wokX9M1P1mJ-xUZjb81y9MKOSizg3fIOhoCj/exec';
+    
+    // 1. 画面の入力フォームから値を取得
+    var taskId = 'task_' + new Date().getTime(); // 簡易的な一意のID
+    var title = document.getElementById('taskTitle').value;
+    var category = document.getElementById('taskCategory').value;
+    var subject = document.getElementById('taskSubject').value;
+    var dueDate = document.getElementById('taskDueDate').value;
+    var priority = document.getElementById('taskPriority').value;
+    var memo = document.getElementById('taskMemo').value;
+    
+    // 2. LIFFで取得したLINEユーザーIDが入っているかチェック
+    if (!userLineId) {
+        alert('LINEユーザーIDがまだ取得できていません。少し待ってから再度お試しください。');
+        return;
+    }
+
+    // 3. 送信用のパラメータをURLSearchParamsでまとめる（GET方式でCORS回避）
+    var params = new URLSearchParams({
+        id: taskId,
+        title: title,
+        category: category,
+        subject: subject,
+        dueDate: dueDate,
+        status: '未完了', // 初期値
+        priority: priority,
+        memo: memo,
+        userId: userLineId // ← LIFFで取得した実際のLINEユーザーIDをここで渡す！
+    });
+
+    var requestUrl = gasWebappUrl + '?' + params.toString();
+
+    console.log('GASへタスク登録データを送信します...');
+
+    // 4. fetchを使ったGETリクエスト送信
+    fetch(requestUrl)
+        .then(response => response.json())
+        .then(data => {
+            console.log('成功:', data);
+            alert('タスクを登録しました！');
+            
+            // 必要に応じてフォームをリセットする処理などを記述
+            // document.getElementById('taskForm').reset();
+        })
+        .catch((error) => {
+            console.error('通信エラー:', error);
+            alert('タスクの登録に失敗しました。ネットワーク状況を確認してください。');
+        });
+}
+
   </script>
 </head>
 <body>
@@ -411,6 +527,8 @@
         <ons-button class="add-btn" modifier="large" onclick="addReminder()">追加する</ons-button>
       </div>
 
+     
+
       <!-- 一覧ヘッダー＆フィルター -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
         <span style="font-weight: bold; color: #444; font-size: 15px;">タスク一覧</span>
@@ -421,6 +539,15 @@
         </select>
       </div>
 
+      <p id="userName" style="font-weight: bold; margin-bottom: 10px;">LINEアカウント読み込み中...</p>
+
+      <div class="ion-padding">
+  <h2>LINE通知テスト</h2>
+  <!-- ボタンが押されたらJavaScriptの関数を呼び出す -->
+  <button class="btn btn-primary" onclick="sendLineNotification()">
+    LINEに通知を送る
+  </button>
+  </div>
       <!-- タスク一覧を表示するエリア -->
       <div id="reminderList"></div>
     </div>
