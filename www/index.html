@@ -140,10 +140,10 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbz-VA3BfMuk2M1jfWHaJU9uXAA_GiR7wokX9M1P1mJ-xUZjb81y9MKOSizg3fIOhoCj/exec";
     
-    // ユーザーIDを保持する変数を用意しておく
+    // ユーザーIDとタスク一覧を保持する変数をしっかり用意しておく
     let userLineId = "";
-    // 【追加】タスクのリストを保持する配列を定義する
-    let allReminders = [];
+    let allReminders = []; // ★ ここで allReminders を定義したのでエラーが消えます！
+
     document.addEventListener("DOMContentLoaded", function() {
         // LIFFの初期化を呼び出す
         initLiff();
@@ -155,7 +155,7 @@
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 } else {
-                    // プロフィール（名前とID）を取得する
+                    // プロフィール（名前和とID）を取得する
                     liff.getProfile().then(profile => {
                         userLineId = profile.userId; // IDを保存！
                         const displayName = profile.displayName;
@@ -174,7 +174,6 @@
                 console.error("LIFFの初期化に失敗しました", err);
             });
     }
-
 
     // データ一覧取得 (GET)
     function fetchReminders() {
@@ -222,7 +221,6 @@
       }
 
       filtered.forEach(function(item) {
-        // IDが空の場合の安全対策
         const id = String(item.id || item.ID || "").trim();
         const title = item.title || item.タイトル || "無題";
         const category = item.category || item.分類 || "その他";
@@ -238,7 +236,6 @@
         if (priority === "高") priorityClass = "priority-high";
         if (priority === "低") priorityClass = "priority-low";
 
-        // onclick="markAsDone('${id}')" で ID 文字列を確実にシングルクォーテーションで囲む
         const html = `
           <div class="task-card ${isDone ? 'done' : ''}">
             <div style="flex: 1; padding-right: 8px;">
@@ -248,12 +245,12 @@
                 ${subject && subject !== "なし" ? `<span class="badge badge-subject">${escapeHtml(subject)}</span>` : ''}
               </div>
               <div class="task-sub">
-                 期限: ${escapeHtml(dueDate)} | 重要度: <span class="${priorityClass}">${escapeHtml(priority)}</span>
+                  期限: ${escapeHtml(dueDate)} | 重要度: <span class="${priorityClass}">${escapeHtml(priority)}</span>
               </div>
               ${memo ? `<div class="task-memo"> ${escapeHtml(memo)}</div>` : ''}
             </div>
             <div>
-              ${isDone ? '<span style="color:#27ae60; font-weight:bold; font-size:13px;">✓ 期限過</span>' : ''}
+              ${isDone ? '<span style="color:#27ae60; font-weight:bold; font-size:13px;">✓ 完了</span>' : ''}
             </div>
           </div>
         `;
@@ -276,7 +273,6 @@
       })
       .then(function() {
         if (window.ons) ons.notification.hideCurrentAlert();
-        // 待ち時間を 2000ms (2秒) に延長
         setTimeout(fetchReminders, 2000);
       })
       .catch(function(err) {
@@ -295,13 +291,12 @@
         otherInput.focus();
       } else {
         otherInput.style.display = "none";
-        otherInput.value = ""; // 非表示にしたら中身をクリア
+        otherInput.value = "";
       }
     }
 
     // タスク追加 (POST)
     function addReminder() {
-      // ★送信時にLINEのユーザーIDが取得できているかチェックする
       if (!userLineId) {
         alert("LINEアカウント情報を取得中です。数秒待ってからもう一度お試しください。");
         return;
@@ -316,7 +311,6 @@
         subject = otherVal ? otherVal : "その他";
       }
 
-      // 取得した日付（例: 2026-10-11）をスラッシュ区切り（2026/10/11）に変換
       let rawDate = document.getElementById("dueDateInput").value;
       let dueDate = rawDate ? rawDate.replace(/-/g, "/") : "";
 
@@ -330,7 +324,7 @@
 
       const payload = {
         action: "add",
-        userId: userLineId, // ★ここに取得したLINE IDをセットして送信します！
+        userId: userLineId,
         title: title,
         category: category,
         subject: subject,
@@ -351,7 +345,6 @@
       .then(function() {
         if (window.ons) ons.notification.hideCurrentAlert();
         
-        // 入力フォームクリア
         document.getElementById("titleInput").value = "";
         document.getElementById("subjectInput").value = "なし";
         document.getElementById("subjectOtherInput").style.display = "none";
@@ -402,85 +395,7 @@
     function escapeHtml(str) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-
-  function sendLineNotificationFromApp() {
-  var gasWebappUrl = 'https://script.google.com/macros/s/AKfycbz-VA3BfMuk2M1jfWHaJU9uXAA_GiR7wokX9M1P1mJ-xUZjb81y9MKOSizg3fIOhoCj/exec';
-  
-  // 送信したいデータ
-  var targetUserId = 'U321d69044a04ea31236fca6dbf082217'; 
-  var messageText = '【Monacaアプリ】ボタンから送信されたテスト通知です！';
-
-  // URLのクエリパラメータとして組み立てる（encodeURIComponentで文字化け防止）
-  var requestUrl = gasWebappUrl + '?userId=' + encodeURIComponent(targetUserId) + '&message=' + encodeURIComponent(messageText);
-
-  console.log('GASへGETリクエストを送信します...');
-
-  // GETリクエストならCORSに引っかかりません
-  fetch(requestUrl)
-    .then(response => response.json())
-    .then(data => {
-      console.log('成功:', data);
-      alert('LINEへの通知リクエストを送信しました！');
-    })
-    .catch((error) => {
-      console.error('通信エラー:', error);
-      alert('通知の送信に失敗しました。');
-    });
-}
-
-function registerTaskFromApp() {
-    // あなたのGASウェブアプリのURLに書き換えてください
-    var gasWebappUrl = 'https://script.google.com/macros/s/AKfycbz-VA3BfMuk2M1jfWHaJU9uXAA_GiR7wokX9M1P1mJ-xUZjb81y9MKOSizg3fIOhoCj/exec';
-    
-    // 1. 画面の入力フォームから値を取得
-    var taskId = 'task_' + new Date().getTime(); // 簡易的な一意のID
-    var title = document.getElementById('taskTitle').value;
-    var category = document.getElementById('taskCategory').value;
-    var subject = document.getElementById('taskSubject').value;
-    var dueDate = document.getElementById('taskDueDate').value;
-    var priority = document.getElementById('taskPriority').value;
-    var memo = document.getElementById('taskMemo').value;
-    
-    // 2. LIFFで取得したLINEユーザーIDが入っているかチェック
-    if (!userLineId) {
-        alert('LINEユーザーIDがまだ取得できていません。少し待ってから再度お試しください。');
-        return;
-    }
-
-    // 3. 送信用のパラメータをURLSearchParamsでまとめる（GET方式でCORS回避）
-    var params = new URLSearchParams({
-        id: taskId,
-        title: title,
-        category: category,
-        subject: subject,
-        dueDate: dueDate,
-        status: '未完了', // 初期値
-        priority: priority,
-        memo: memo,
-        userId: userLineId // ← LIFFで取得した実際のLINEユーザーIDをここで渡す！
-    });
-
-    var requestUrl = gasWebappUrl + '?' + params.toString();
-
-    console.log('GASへタスク登録データを送信します...');
-
-    // 4. fetchを使ったGETリクエスト送信
-    fetch(requestUrl)
-        .then(response => response.json())
-        .then(data => {
-            console.log('成功:', data);
-            alert('タスクを登録しました！');
-            
-            // 必要に応じてフォームをリセットする処理などを記述
-            // document.getElementById('taskForm').reset();
-        })
-        .catch((error) => {
-            console.error('通信エラー:', error);
-            alert('タスクの登録に失敗しました。ネットワーク状況を確認してください。');
-        });
-}
-
-  </script>
+</script>
 </head>
 <body>
   <ons-page>
