@@ -155,16 +155,18 @@
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 } else {
-                    // プロフィール（名前和とID）を取得する
                     liff.getProfile().then(profile => {
-                        userLineId = profile.userId; // IDを保存！
+                        userLineId = profile.userId;
                         const displayName = profile.displayName;
                         
-                        // 画面に名前を表示する
                         const nameElem = document.getElementById("userName");
                         if (nameElem) {
                             nameElem.innerText = displayName + "さん、こんにちは！";
                         }
+
+                        // ★【追加】プロフィールが取得できたら、自動でタスク一覧を取得して表示する！
+                        fetchReminders();
+
                     }).catch((err) => {
                         console.error("プロフィールの取得に失敗しました", err);
                     });
