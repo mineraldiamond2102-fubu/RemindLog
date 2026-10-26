@@ -142,7 +142,8 @@
     
     // ユーザーIDを保持する変数を用意しておく
     let userLineId = "";
-
+    // 【追加】タスクのリストを保持する配列を定義する
+    let allReminders = [];
     document.addEventListener("DOMContentLoaded", function() {
         // LIFFの初期化を呼び出す
         initLiff();
