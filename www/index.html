@@ -225,7 +225,8 @@
         const title = item.title || item.タイトル || "無題";
         const category = item.category || item.分類 || "その他";
         const subject = item.subject || item.教科 || "なし";
-        const dueDate = item.dueDate || item.期限 || "なし";
+        const rawDueDate = item.dueDate || item.期限 || "";
+        const dueDate = formatDate(rawDueDate);
         const status = item.status || item.ステータス || "未完了";
         const priority = item.priority || item.重要度 || "中";
         const memo = item.memo || item.メモ || "";
@@ -360,6 +361,18 @@
         alert("登録エラー: " + err.message);
       });
     }
+    
+function formatDate(dateStr) {
+  if (!dateStr) return "なし";
+  const date = new Date(dateStr);
+  // 日付として正しくない場合はそのまま返す
+  if (isNaN(date.getTime())) return dateStr; 
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}/${m}/${d}`;
+}
 
     // 通知テストを実行する関数
     function sendLineNotification() {
